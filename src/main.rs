@@ -11,6 +11,31 @@ use image::Pixel;
 fn main() {
     let img = image::open(&Path::new("test.jpg")).unwrap();
 
+
+    let img = imageops::resize(&img, 130, 130, FilterType::Nearest);
+
+    let (width, height) = img.dimensions();
+
+    for y in 0..height {
+
+        //TODO: inc by 2 instead
+        if y%2 == 1 || y + 1 == height {
+            continue;
+        }
+        for x in 0..width {
+
+            let top_colour: u8 = find_colour_index(img[(x, y)].to_rgb().channels());
+            let bottom_colour: u8 = find_colour_index(img[(x, y + 1)].to_rgb().channels());
+
+            print!("{}", Fixed(bottom_colour).on(Fixed(top_colour)).paint("▄"));
+        }
+        print!("\n");
+    }
+}
+
+fn find_colour_index(pixel: &[u8]) -> u8 {
+    //TODO: constants
+
     let ansi_colours = [
 [ 0x00, 0x00, 0x00 ],[ 0x80, 0x00, 0x00 ],[ 0x00, 0x80, 0x00 ],[ 0x80, 0x80, 0x00 ],[ 0x00, 0x00, 0x80 ],
 [ 0x80, 0x00, 0x80 ],[ 0x00, 0x80, 0x80 ],[ 0xc0, 0xc0, 0xc0 ],[ 0x80, 0x80, 0x80 ],[ 0xff, 0x00, 0x00 ],
@@ -65,35 +90,23 @@ fn main() {
 [ 0xbc, 0xbc, 0xbc ],[ 0xc6, 0xc6, 0xc6 ],[ 0xd0, 0xd0, 0xd0 ],[ 0xda, 0xda, 0xda ],[ 0xe4, 0xe4, 0xe4 ],
 [ 0xee, 0xee, 0xee ]];
 
-    let img = imageops::resize(&img, 130, 60, FilterType::Nearest);
-
-    for (x, _y, pixel) in img.enumerate_pixels() {
-        let pixel = pixel.to_rgb();
-        let channels = pixel.channels();
-        let r = channels[0] as i32;
-        let g = channels[1] as i32;
-        let b = channels[2] as i32;
-       
-        let mut best = 0 as u8;
-        let mut best_distance = 255 * 255 * 3 + 1;
-        for i in 0..255 {
-            let ansi_colour = ansi_colours[i];
-            let dr: i32 = ansi_colour[0] - r;
-            let dg: i32 = ansi_colour[1] - g;
-            let db: i32 = ansi_colour[2] - b;
-            let distance = dr * dr + dg * dg + db * db;
-        
-            if distance < best_distance {
-                best_distance = distance;
-                best = i as u8;
-            }
+   
+    let mut best = 0 as u8;
+    let mut best_distance = 255 * 255 * 3 + 1;
+    for i in 0..255 {
+        let ansi_colour = ansi_colours[i];
+        let dr: i32 = ansi_colour[0] - pixel[0] as i32;
+        let dg: i32 = ansi_colour[1] - pixel[1] as i32;
+        let db: i32 = ansi_colour[2] - pixel[2] as i32;
+        let distance = dr * dr + dg * dg + db * db;
+    
+        if distance < best_distance {
+            best_distance = distance;
+            best = i as u8;
         }
-        if x == 0 {
-            print!("\n");
-        }    
-        print!("{}", Fixed(best).paint("█"));
     }
-    print!("\n");
+
+    return best;
 }
 
 
