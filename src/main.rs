@@ -11,10 +11,10 @@ use image::Pixel;
 fn main() {
     let img = image::open(&Path::new("test.jpg")).unwrap();
 
+    let width = 130;
+    let height = 130;
 
-    let img = imageops::resize(&img, 130, 130, FilterType::Nearest);
-
-    let (width, height) = img.dimensions();
+    let img = imageops::resize(&img, width, height, FilterType::Nearest);
 
     for y in 0..height {
 
@@ -34,9 +34,25 @@ fn main() {
 }
 
 fn find_colour_index(pixel: &[u8]) -> u8 {
-    //TODO: constants
+    let mut best = 0 as u8;
+    let mut best_distance = 255 * 255 * 3 + 1;
+    for i in 0..255 {
+        let ansi_colour = ANSI_COLOURS[i];
+        let dr: i32 = ansi_colour[0] - pixel[0] as i32;
+        let dg: i32 = ansi_colour[1] - pixel[1] as i32;
+        let db: i32 = ansi_colour[2] - pixel[2] as i32;
+        let distance = dr * dr + dg * dg + db * db;
+    
+        if distance < best_distance {
+            best_distance = distance;
+            best = i as u8;
+        }
+    }
 
-    let ansi_colours = [
+    return best;
+}
+
+static ANSI_COLOURS: [[i32; 3]; 256] = [
 [ 0x00, 0x00, 0x00 ],[ 0x80, 0x00, 0x00 ],[ 0x00, 0x80, 0x00 ],[ 0x80, 0x80, 0x00 ],[ 0x00, 0x00, 0x80 ],
 [ 0x80, 0x00, 0x80 ],[ 0x00, 0x80, 0x80 ],[ 0xc0, 0xc0, 0xc0 ],[ 0x80, 0x80, 0x80 ],[ 0xff, 0x00, 0x00 ],
 [ 0x00, 0xff, 0x00 ],[ 0xff, 0xff, 0x00 ],[ 0x00, 0x00, 0xff ],[ 0xff, 0x00, 0xff ],[ 0x00, 0xff, 0xff ],
@@ -89,24 +105,4 @@ fn find_colour_index(pixel: &[u8]) -> u8 {
 [ 0x8a, 0x8a, 0x8a ],[ 0x94, 0x94, 0x94 ],[ 0x9e, 0x9e, 0x9e ],[ 0xa8, 0xa8, 0xa8 ],[ 0xb2, 0xb2, 0xb2 ],
 [ 0xbc, 0xbc, 0xbc ],[ 0xc6, 0xc6, 0xc6 ],[ 0xd0, 0xd0, 0xd0 ],[ 0xda, 0xda, 0xda ],[ 0xe4, 0xe4, 0xe4 ],
 [ 0xee, 0xee, 0xee ]];
-
-   
-    let mut best = 0 as u8;
-    let mut best_distance = 255 * 255 * 3 + 1;
-    for i in 0..255 {
-        let ansi_colour = ansi_colours[i];
-        let dr: i32 = ansi_colour[0] - pixel[0] as i32;
-        let dg: i32 = ansi_colour[1] - pixel[1] as i32;
-        let db: i32 = ansi_colour[2] - pixel[2] as i32;
-        let distance = dr * dr + dg * dg + db * db;
-    
-        if distance < best_distance {
-            best_distance = distance;
-            best = i as u8;
-        }
-    }
-
-    return best;
-}
-
 
