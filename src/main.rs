@@ -11,8 +11,8 @@ use image::Pixel;
 fn main() {
     let img = image::open(&Path::new("test.jpg")).unwrap();
 
-    let width = 130;
-    let height = 130;
+    let width = 192;
+    let height = 120;
 
     let img = imageops::resize(&img, width, height, FilterType::Nearest);
 
@@ -36,7 +36,7 @@ fn main() {
 fn find_colour_index(pixel: &[u8]) -> u8 {
     let mut best = 0 as u8;
     let mut best_distance = 255 * 255 * 3 + 1;
-    for i in 0..255 {
+    for i in 16..255 {
         let ansi_colour = ANSI_COLOURS[i];
         let dr: i32 = ansi_colour[0] - pixel[0] as i32;
         let dg: i32 = ansi_colour[1] - pixel[1] as i32;
