@@ -2,17 +2,26 @@ extern crate image;
 extern crate ansi_term;
 
 use ansi_term::Colour::Fixed;
+use ansi_term::{ANSIString, ANSIStrings};
 
 use std::path::Path;
 
-use image::{imageops, FilterType};
+use image::{imageops, FilterType, GenericImage};
 use image::Pixel;
 
 fn main() {
+
     let img = image::open(&Path::new("test.jpg")).unwrap();
 
-    let width = 192;
-    let height = 120;
+    let (orig_width, orig_height) = img.dimensions();
+
+//    let ratio = orig_width as f32 / orig_height as f32;
+
+    //TODO: parse params. I wish I got internet on the bus.
+    let width = 140;
+    let height = (orig_height as f32 * width as f32 / orig_width as f32 + 0.5) as u32;
+
+    //println!("Scaling image from {}x{} with ratio {} to {}x{}", orig_width, orig_height, ratio, width, height);
 
     let img = imageops::resize(&img, width, height, FilterType::Nearest);
 
@@ -22,14 +31,19 @@ fn main() {
         if y%2 == 1 || y + 1 == height {
             continue;
         }
+
+        let mut row: Vec<ANSIString<'static>> = vec![];
         for x in 0..width {
 
             let top_colour: u8 = find_colour_index(img[(x, y)].to_rgb().channels());
             let bottom_colour: u8 = find_colour_index(img[(x, y + 1)].to_rgb().channels());
 
-            print!("{}", Fixed(bottom_colour).on(Fixed(top_colour)).paint("▄"));
+            //print!("{}", Fixed(bottom_colour).on(Fixed(top_colour)).paint("▄"));
+            row.push(Fixed(bottom_colour).on(Fixed(top_colour)).paint("▄"));
+
         }
-        print!("\n");
+
+        print!("{}\n", ANSIStrings(&row[..]));
     }
 }
 
