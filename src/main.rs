@@ -1,27 +1,84 @@
 extern crate image;
 extern crate ansi_term;
+extern crate rustc_serialize;
+
+extern crate docopt;
+
+use docopt::Docopt;
+
+const USAGE: &'static str = "
+    termpix : display image from <file> in an ANSI terminal
+
+    Usage:
+      termpix <file> [--width <width>] [--height <height>]
+
+    Options:
+      --width <width>    Output width in terminal columns.
+      --height <height>  Output height in terminal rows.
+
+    If only one of --width or --height is specified, the other will be inferred 
+    based on the aspect ratio of the input image. At least one must be specified.
+";
 
 use ansi_term::Colour::Fixed;
 use ansi_term::{ANSIString, ANSIStrings};
 
 use std::path::Path;
+use std::io::Write;
 
 use image::{imageops, FilterType, GenericImage};
 use image::Pixel;
 
+#[derive(Debug, RustcDecodable)]
+struct Args {
+    flag_width: Option<i32>,
+    flag_height: Option<i32>,
+    arg_file: String,
+}
+
 fn main() {
 
-    let img = image::open(&Path::new("test.jpg")).unwrap();
+    let args: Args = Docopt::new(USAGE)
+                            .and_then(|d| d.decode())
+                            .unwrap_or_else(|e| e.exit());
+    let img = image::open(&Path::new(&args.arg_file)).unwrap();
 
     let (orig_width, orig_height) = img.dimensions();
 
-//    let ratio = orig_width as f32 / orig_height as f32;
+    let width;
+    let height;
 
-    //TODO: parse params. I wish I got internet on the bus.
-    let width = 140;
-    let height = (orig_height as f32 * width as f32 / orig_width as f32 + 0.5) as u32;
+    match args.flag_width {
+        Some(w) => {
+                width = w;
+                match args.flag_height {
+                    Some(h) => {
+                        height = h * 2;
+                    }
+                    None => {
+                        height = (orig_height as f32 * width as f32 / orig_width as f32 + 0.5) as i32;
+                    }
+                }
+            }
+        None => {
+                match args.flag_height {
+                    Some(h) => {
+                        height = h * 2;
 
-    //println!("Scaling image from {}x{} with ratio {} to {}x{}", orig_width, orig_height, ratio, width, height);
+                        width = (orig_width as f32 * height as f32 / orig_height as f32 + 0.5) as i32;
+                    }
+                    None => {
+                        writeln!(std::io::stderr(), "At least one of --width or --height must be specified.");
+                        std::process::exit(1);
+                    }
+                }
+        }
+    
+    }
+
+
+    let width = width as u32;
+    let height = height as u32;
 
     let img = imageops::resize(&img, width, height, FilterType::Nearest);
 
@@ -37,10 +94,7 @@ fn main() {
 
             let top_colour: u8 = find_colour_index(img[(x, y)].to_rgb().channels());
             let bottom_colour: u8 = find_colour_index(img[(x, y + 1)].to_rgb().channels());
-
-            //print!("{}", Fixed(bottom_colour).on(Fixed(top_colour)).paint("▄"));
             row.push(Fixed(bottom_colour).on(Fixed(top_colour)).paint("▄"));
-
         }
 
         print!("{}\n", ANSIStrings(&row[..]));
