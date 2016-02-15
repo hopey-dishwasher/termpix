@@ -1,10 +1,13 @@
 extern crate image;
 extern crate ansi_term;
 extern crate rustc_serialize;
+extern crate terminal_size;
 
 extern crate docopt;
 
 use docopt::Docopt;
+use terminal_size::{Width, Height, terminal_size};
+
 
 const USAGE: &'static str = "
     termpix : display image from <file> in an ANSI terminal
@@ -68,8 +71,17 @@ fn main() {
                         width = (orig_width as f32 * height as f32 / orig_height as f32 + 0.5) as i32;
                     }
                     None => {
-                        writeln!(std::io::stderr(), "At least one of --width or --height must be specified.");
-                        std::process::exit(1);
+                       let size = terminal_size();
+
+                        if let Some((Width(terminal_width), Height(terminal_height))) = size {
+                            width = terminal_width as i32;
+                            height = (terminal_height * 2 - 1) as i32;
+                        } else {
+                            writeln!(std::io::stderr(), "Neither --width or --height specified, and could not determine terminal size. Giving up.");
+                            std::process::exit(1);
+                        }
+
+
                     }
                 }
         }

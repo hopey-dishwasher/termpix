@@ -9,3 +9,5 @@ docopt = "0.6"
 rustc-serialize = "0.3"
 
 image = "*"
+
+terminal_size = "*"
