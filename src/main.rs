@@ -34,8 +34,8 @@ use image::Pixel;
 
 #[derive(Debug, RustcDecodable)]
 struct Args {
-    flag_width: Option<i32>,
-    flag_height: Option<i32>,
+    flag_width: Option<u32>,
+    flag_height: Option<u32>,
     arg_file: String,
 }
 
@@ -48,49 +48,7 @@ fn main() {
 
     let (orig_width, orig_height) = img.dimensions();
 
-    let width;
-    let height;
-
-    match args.flag_width {
-        Some(w) => {
-                width = w;
-                match args.flag_height {
-                    Some(h) => {
-                        height = h * 2;
-                    }
-                    None => {
-                        height = (orig_height as f32 * width as f32 / orig_width as f32 + 0.5) as i32;
-                    }
-                }
-            }
-        None => {
-                match args.flag_height {
-                    Some(h) => {
-                        height = h * 2;
-
-                        width = (orig_width as f32 * height as f32 / orig_height as f32 + 0.5) as i32;
-                    }
-                    None => {
-                       let size = terminal_size();
-
-                        if let Some((Width(terminal_width), Height(terminal_height))) = size {
-                            width = terminal_width as i32;
-                            height = (terminal_height * 2 - 1) as i32;
-                        } else {
-                            writeln!(std::io::stderr(), "Neither --width or --height specified, and could not determine terminal size. Giving up.");
-                            std::process::exit(1);
-                        }
-
-
-                    }
-                }
-        }
-    
-    }
-
-
-    let width = width as u32;
-    let height = height as u32;
+    let (width, height) = determine_size(args.flag_width, args.flag_height, orig_width, orig_height);
 
     let img = imageops::resize(&img, width, height, FilterType::Nearest);
 
@@ -110,6 +68,58 @@ fn main() {
         }
 
         print!("{}\n", ANSIStrings(&row[..]));
+    }
+}
+
+fn determine_size(flag_width: Option<u32>,
+                  flag_height: Option<u32>,
+                  orig_width: u32,
+                  orig_height: u32) -> (u32, u32) {
+    match flag_width {
+        Some(w) => {
+                match flag_height {
+                    Some(h) => {
+                        return (w, h * 2);
+                    }
+                    None => {
+                        return (w, scale_dimension(w, orig_height, orig_width));
+                    }
+                }
+            }
+        None => {
+                match flag_height {
+                    Some(h) => {
+                        return (scale_dimension(h * 2, orig_width, orig_height), h * 2);
+                    }
+                    None => {
+                       let size = terminal_size();
+
+                        if let Some((Width(terminal_width), Height(terminal_height))) = size {                            
+                            return fit_to_size(orig_width, orig_height, 
+                                terminal_width as u32, (terminal_height * 2 - 1) as u32);
+                        } else {
+                            writeln!(std::io::stderr(), "Neither --width or --height specified, and could not determine terminal size. Giving up.");
+                            std::process::exit(1);
+                        }
+
+
+                    }
+                }
+        }
+        
+    }
+}
+
+fn scale_dimension(other: u32, orig_this: u32, orig_other: u32) -> u32 {
+    return (orig_this as f32 * other as f32 / orig_other as f32 + 0.5) as u32;
+}
+
+fn fit_to_size(orig_width: u32, orig_height: u32, max_width: u32, max_height: u32) -> (u32, u32) {
+    let calculated_width = scale_dimension(max_height, orig_width, orig_height);
+    if calculated_width <= max_width {
+        return (calculated_width, max_height);
+    } else {
+        return (max_width, scale_dimension(max_width, orig_height, orig_width));
     }
 }
 
