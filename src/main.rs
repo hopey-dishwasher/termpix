@@ -8,34 +8,38 @@ extern crate docopt;
 use docopt::Docopt;
 use terminal_size::{Width, Height, terminal_size};
 
+use ansi_term::Colour::Fixed;
+use ansi_term::{ANSIString, ANSIStrings};
+
+use image::{imageops, FilterType, GenericImage};
+use image::Pixel;
+
+use std::path::Path;
+use std::io::Write;
+use std::cmp::min;
 
 const USAGE: &'static str = "
     termpix : display image from <file> in an ANSI terminal
 
     Usage:
-      termpix <file> [--width <width>] [--height <height>]
+      termpix <file> [--width <width>] [--height <height>] [--max-width <max-width>] [--max-height <max-height>]
+
+      By default it will use as much of the current terminal window as possible, while maintaining the aspect 
+      ratio of the input image. This can be overridden as follows.
 
     Options:
       --width <width>    Output width in terminal columns.
       --height <height>  Output height in terminal rows.
-
-    If only one of --width or --height is specified, the other will be inferred 
-    based on the aspect ratio of the input image. At least one must be specified.
+      --max-width <max-width>  Maximum width to use when --width is excluded
+      --max-height <max-height>  Maximum height to use when --height is excluded
 ";
-
-use ansi_term::Colour::Fixed;
-use ansi_term::{ANSIString, ANSIStrings};
-
-use std::path::Path;
-use std::io::Write;
-
-use image::{imageops, FilterType, GenericImage};
-use image::Pixel;
 
 #[derive(Debug, RustcDecodable)]
 struct Args {
     flag_width: Option<u32>,
     flag_height: Option<u32>,
+    flag_max_width: Option<u32>,
+    flag_max_height: Option<u32>,
     arg_file: String,
 }
 
@@ -48,7 +52,7 @@ fn main() {
 
     let (orig_width, orig_height) = img.dimensions();
 
-    let (width, height) = determine_size(args.flag_width, args.flag_height, orig_width, orig_height);
+    let (width, height) = determine_size(args, orig_width, orig_height);
 
     let img = imageops::resize(&img, width, height, FilterType::Nearest);
 
@@ -71,13 +75,12 @@ fn main() {
     }
 }
 
-fn determine_size(flag_width: Option<u32>,
-                  flag_height: Option<u32>,
+fn determine_size(args: Args,
                   orig_width: u32,
                   orig_height: u32) -> (u32, u32) {
-    match flag_width {
+    match args.flag_width {
         Some(w) => {
-                match flag_height {
+                match args.flag_height {
                     Some(h) => {
                         return (w, h * 2);
                     }
@@ -87,7 +90,7 @@ fn determine_size(flag_width: Option<u32>,
                 }
             }
         None => {
-                match flag_height {
+                match args.flag_height {
                     Some(h) => {
                         return (scale_dimension(h * 2, orig_width, orig_height), h * 2);
                     }
@@ -95,18 +98,20 @@ fn determine_size(flag_width: Option<u32>,
                        let size = terminal_size();
 
                         if let Some((Width(terminal_width), Height(terminal_height))) = size {                            
-                            return fit_to_size(orig_width, orig_height, 
-                                terminal_width as u32, (terminal_height * 2 - 1) as u32);
+                            return fit_to_size(
+                                orig_width, 
+                                orig_height, 
+                                terminal_width as u32, 
+                                (terminal_height - 1) as u32,
+                                args.flag_max_width,
+                                args.flag_max_height);
                         } else {
                             writeln!(std::io::stderr(), "Neither --width or --height specified, and could not determine terminal size. Giving up.");
                             std::process::exit(1);
                         }
-
-
                     }
                 }
         }
-        
     }
 }
 
@@ -114,12 +119,28 @@ fn scale_dimension(other: u32, orig_this: u32, orig_other: u32) -> u32 {
     return (orig_this as f32 * other as f32 / orig_other as f32 + 0.5) as u32;
 }
 
-fn fit_to_size(orig_width: u32, orig_height: u32, max_width: u32, max_height: u32) -> (u32, u32) {
-    let calculated_width = scale_dimension(max_height, orig_width, orig_height);
-    if calculated_width <= max_width {
-        return (calculated_width, max_height);
+fn fit_to_size(orig_width: u32, 
+               orig_height: u32, 
+               terminal_width: u32, 
+               terminal_height: u32,
+               max_width: Option<u32>,
+               max_height: Option<u32>) -> (u32, u32) {
+    let target_width = match max_width {
+        Some(max_width) => min(max_width, terminal_width),
+        None => terminal_width
+    };
+
+    //2 pixels per terminal row
+    let target_height = 2 * match max_height {
+        Some(max_height) => min(max_height, terminal_height),
+        None => terminal_height
+    };
+
+    let calculated_width = scale_dimension(target_height, orig_width, orig_height);
+    if calculated_width <= target_width {
+        return (calculated_width, target_height);
     } else {
-        return (max_width, scale_dimension(max_width, orig_height, orig_width));
+        return (target_width, scale_dimension(target_width, orig_height, orig_width));
     }
 }
 
