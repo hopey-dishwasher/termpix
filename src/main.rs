@@ -9,7 +9,7 @@ use docopt::Docopt;
 use terminal_size::{Width, Height, terminal_size};
 
 use ansi_term::Colour::Fixed;
-use ansi_term::{ANSIString, ANSIStrings};
+use ansi_term::ANSIStrings;
 
 use image::{imageops, FilterType, GenericImage};
 use image::Pixel;
@@ -57,66 +57,49 @@ fn main() {
     let img = imageops::resize(&img, width, height, FilterType::Nearest);
 
     for y in 0..height {
-
         //TODO: inc by 2 instead
         if y%2 == 1 || y + 1 == height {
             continue;
         }
 
-        let mut row: Vec<ANSIString<'static>> = vec![];
-        for x in 0..width {
+        let row: Vec<_> = (0..width).map(|x| {
+            let top_colour = find_colour_index(img[(x, y)].to_rgb().channels());
+            let bottom_colour = find_colour_index(img[(x, y + 1)].to_rgb().channels());
+            Fixed(bottom_colour).on(Fixed(top_colour)).paint("▄")
+        }).collect();
 
-            let top_colour: u8 = find_colour_index(img[(x, y)].to_rgb().channels());
-            let bottom_colour: u8 = find_colour_index(img[(x, y + 1)].to_rgb().channels());
-            row.push(Fixed(bottom_colour).on(Fixed(top_colour)).paint("▄"));
-        }
-
-        print!("{}\n", ANSIStrings(&row[..]));
+        print!("{}\n", ANSIStrings(&row));
     }
 }
 
 fn determine_size(args: Args,
                   orig_width: u32,
                   orig_height: u32) -> (u32, u32) {
-    match args.flag_width {
-        Some(w) => {
-                match args.flag_height {
-                    Some(h) => {
-                        return (w, h * 2);
-                    }
-                    None => {
-                        return (w, scale_dimension(w, orig_height, orig_width));
-                    }
-                }
-            }
-        None => {
-                match args.flag_height {
-                    Some(h) => {
-                        return (scale_dimension(h * 2, orig_width, orig_height), h * 2);
-                    }
-                    None => {
-                       let size = terminal_size();
+    match (args.flag_width, args.flag_height) {
+        (Some(w), Some(h)) => (w, h * 2),
+        (Some(w), None) => (w, scale_dimension(w, orig_height, orig_width)),
+        (None, Some(h)) => (scale_dimension(h * 2, orig_width, orig_height), h * 2),
+        (None, None) => {
+            let size = terminal_size();
 
-                        if let Some((Width(terminal_width), Height(terminal_height))) = size {                            
-                            return fit_to_size(
-                                orig_width, 
-                                orig_height, 
-                                terminal_width as u32, 
-                                (terminal_height - 1) as u32,
-                                args.flag_max_width,
-                                args.flag_max_height);
-                        } else {
-                            writeln!(std::io::stderr(), "Neither --width or --height specified, and could not determine terminal size. Giving up.");
-                            std::process::exit(1);
-                        }
-                    }
-                }
+            if let Some((Width(terminal_width), Height(terminal_height))) = size {                            
+                fit_to_size(
+                    orig_width, 
+                    orig_height, 
+                    terminal_width as u32, 
+                    (terminal_height - 1) as u32,
+                    args.flag_max_width,
+                    args.flag_max_height)
+            } else {
+                writeln!(std::io::stderr(), "Neither --width or --height specified, and could not determine terminal size. Giving up.");
+                std::process::exit(1);
+            }
         }
     }
 }
 
 fn scale_dimension(other: u32, orig_this: u32, orig_other: u32) -> u32 {
-    return (orig_this as f32 * other as f32 / orig_other as f32 + 0.5) as u32;
+    (orig_this as f32 * other as f32 / orig_other as f32 + 0.5) as u32
 }
 
 fn fit_to_size(orig_width: u32, 
@@ -138,22 +121,22 @@ fn fit_to_size(orig_width: u32,
 
     let calculated_width = scale_dimension(target_height, orig_width, orig_height);
     if calculated_width <= target_width {
-        return (calculated_width, target_height);
+        (calculated_width, target_height)
     } else {
-        return (target_width, scale_dimension(target_width, orig_height, orig_width));
+        (target_width, scale_dimension(target_width, orig_height, orig_width))
     }
 }
 
 fn find_colour_index(pixel: &[u8]) -> u8 {
-    let mut best = 0 as u8;
+    let mut best = 0;
     let mut best_distance = 255 * 255 * 3 + 1;
     for i in 16..255 {
         let ansi_colour = ANSI_COLOURS[i];
-        let dr: i32 = ansi_colour[0] - pixel[0] as i32;
-        let dg: i32 = ansi_colour[1] - pixel[1] as i32;
-        let db: i32 = ansi_colour[2] - pixel[2] as i32;
+        let dr = ansi_colour[0] - pixel[0] as i32;
+        let dg = ansi_colour[1] - pixel[1] as i32;
+        let db = ansi_colour[2] - pixel[2] as i32;
         let distance = dr * dr + dg * dg + db * db;
-    
+
         if distance < best_distance {
             best_distance = distance;
             best = i as u8;
