@@ -15,14 +15,14 @@ use image::{imageops, FilterType, GenericImage};
 use image::Pixel;
 
 use std::path::Path;
-use std::io::Write;
+use std::io::{Write, self};
 use std::cmp::min;
 
 const USAGE: &'static str = "
     termpix : display image from <file> in an ANSI terminal
 
     Usage:
-      termpix <file> [--width <width>] [--height <height>] [--max-width <max-width>] [--max-height <max-height>]
+      termpix <file> [--width <width>] [--height <height>] [--max-width <max-width>] [--max-height <max-height>] [--true-color|--true-colour]
 
       By default it will use as much of the current terminal window as possible, while maintaining the aspect 
       ratio of the input image. This can be overridden as follows.
@@ -32,6 +32,8 @@ const USAGE: &'static str = "
       --height <height>  Output height in terminal rows.
       --max-width <max-width>  Maximum width to use when --width is excluded
       --max-height <max-height>  Maximum height to use when --height is excluded
+      --true-colour             Use 24-bit RGB colour. Some terminals don't support this.
+      --true-colour             Use 24-bit RGB color but you don't spell so good.
 ";
 
 #[derive(Debug, RustcDecodable)]
@@ -40,6 +42,8 @@ struct Args {
     flag_height: Option<u32>,
     flag_max_width: Option<u32>,
     flag_max_height: Option<u32>,
+    flag_true_colour: bool,
+    flag_true_color: bool,
     arg_file: String,
 }
 
@@ -52,23 +56,48 @@ fn main() {
 
     let (orig_width, orig_height) = img.dimensions();
 
+    let true_colour = args.flag_true_colour || args.flag_true_color;
+
     let (width, height) = determine_size(args, orig_width, orig_height);
 
     let img = imageops::resize(&img, width, height, FilterType::Nearest);
 
-    for y in 0..height {
-        //TODO: inc by 2 instead
-        if y%2 == 1 || y + 1 == height {
-            continue;
+    
+    if !true_colour {
+        for y in 0..height {
+            //TODO: inc by 2 instead
+            if y%2 == 1 || y + 1 == height {
+                continue;
+            }
+
+            let row: Vec<_> = (0..width).map(|x| {
+                let top_colour = find_colour_index(img[(x, y)].to_rgb().channels());
+                let bottom_colour = find_colour_index(img[(x, y + 1)].to_rgb().channels());
+                Fixed(bottom_colour).on(Fixed(top_colour)).paint("▄")
+            }).collect();
+
+            print!("{}\n", ANSIStrings(&row));
+        }    
+    } else {
+        let mut row = Vec::new();
+        for y in 0..height {
+            //TODO: inc by 2 instead
+            if y%2 == 1 || y + 1 == height {
+                continue;
+            }
+
+            for x in 0..width {
+                let top = img[(x,y)];
+                let bottom = img[(x,y+1)];
+                write!(row, "\x1b[48;2;{};{};{}m\x1b[38;2;{};{};{}m▄",
+                       top[0], top[1], top[2],
+                       bottom[0], bottom[1], bottom[2]).unwrap();
+            }
+
+            write!(row, "\x1b[m\n").unwrap();
+            io::stdout().write(&row).unwrap();
+            row.clear();
         }
-
-        let row: Vec<_> = (0..width).map(|x| {
-            let top_colour = find_colour_index(img[(x, y)].to_rgb().channels());
-            let bottom_colour = find_colour_index(img[(x, y + 1)].to_rgb().channels());
-            Fixed(bottom_colour).on(Fixed(top_colour)).paint("▄")
-        }).collect();
-
-        print!("{}\n", ANSIStrings(&row));
     }
 }
 
@@ -91,7 +120,7 @@ fn determine_size(args: Args,
                     args.flag_max_width,
                     args.flag_max_height)
             } else {
-                writeln!(std::io::stderr(), "Neither --width or --height specified, and could not determine terminal size. Giving up.");
+                writeln!(std::io::stderr(), "Neither --width or --height specified, and could not determine terminal size. Giving up.").unwrap();
                 std::process::exit(1);
             }
         }
@@ -199,4 +228,5 @@ static ANSI_COLOURS: [[i32; 3]; 256] = [
 [ 0x8a, 0x8a, 0x8a ],[ 0x94, 0x94, 0x94 ],[ 0x9e, 0x9e, 0x9e ],[ 0xa8, 0xa8, 0xa8 ],[ 0xb2, 0xb2, 0xb2 ],
 [ 0xbc, 0xbc, 0xbc ],[ 0xc6, 0xc6, 0xc6 ],[ 0xd0, 0xd0, 0xd0 ],[ 0xda, 0xda, 0xda ],[ 0xe4, 0xe4, 0xe4 ],
 [ 0xee, 0xee, 0xee ]];
+
 
