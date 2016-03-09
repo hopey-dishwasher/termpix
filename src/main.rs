@@ -83,6 +83,10 @@ fn determine_size(args: Args,
     }
 }
 
+fn scale_dimension(other: u32, orig_this: u32, orig_other: u32) -> u32 {
+    (orig_this as f32 * other as f32 / orig_other as f32 + 0.5) as u32
+}
+
 pub fn fit_to_size(orig_width: u32, 
                    orig_height: u32, 
                    terminal_width: u32, 
