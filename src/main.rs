@@ -28,7 +28,7 @@ const USAGE: &'static str = "
       --max-width <max-width>  Maximum width to use when --width is excluded
       --max-height <max-height>  Maximum height to use when --height is excluded
       --true-colour             Use 24-bit RGB colour. Some terminals don't support this.
-      --true-colour             Use 24-bit RGB color but you don't spell so good.
+      --true-color             Use 24-bit RGB color but you don't spell so good.
 ";
 
 #[derive(Debug, RustcDecodable)]
