@@ -18,8 +18,12 @@ pub fn print_image(img: image::DynamicImage, true_colour: bool, width: u32, heig
             }
 
             let row: Vec<_> = (0..width).map(|x| {
-                let top_colour = find_colour_index(img[(x, y)].to_rgb().channels());
-                let bottom_colour = find_colour_index(img[(x, y + 1)].to_rgb().channels());
+                let mut top = img[(x,y)];
+                let mut bottom = img[(x,y+1)];
+                blend_alpha(&mut top);
+                blend_alpha(&mut bottom);
+                let top_colour = find_colour_index(top.to_rgb().channels());
+                let bottom_colour = find_colour_index(bottom.to_rgb().channels());
                 Fixed(bottom_colour).on(Fixed(top_colour)).paint("▄")
             }).collect();
 
@@ -34,8 +38,10 @@ pub fn print_image(img: image::DynamicImage, true_colour: bool, width: u32, heig
             }
 
             for x in 0..width {
-                let top = img[(x,y)];
-                let bottom = img[(x,y+1)];
+                let mut top = img[(x,y)];
+                let mut bottom = img[(x,y+1)];
+                blend_alpha(&mut top);
+                blend_alpha(&mut bottom);
                 write!(row, "\x1b[48;2;{};{};{}m\x1b[38;2;{};{};{}m▄",
                        top[0], top[1], top[2],
                        bottom[0], bottom[1], bottom[2]).unwrap();
@@ -65,6 +71,13 @@ fn find_colour_index(pixel: &[u8]) -> u8 {
     }
 
     return best;
+}
+
+fn blend_alpha(pixel: &mut image::Rgba<u8>) {
+    let alpha = pixel[3] as i32 as f32/255.0;
+    pixel[0] = (alpha*(pixel[0] as i32 as f32) + (1.0 - alpha)*255.0) as u8;
+    pixel[1] = (alpha*(pixel[1] as i32 as f32) + (1.0 - alpha)*255.0) as u8;
+    pixel[2] = (alpha*(pixel[2] as i32 as f32) + (1.0 - alpha)*255.0) as u8;
 }
 
 static ANSI_COLOURS: [[i32; 3]; 256] = [
