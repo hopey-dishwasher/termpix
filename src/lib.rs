@@ -75,9 +75,9 @@ fn find_colour_index(pixel: &[u8]) -> u8 {
 
 fn blend_alpha(pixel: &mut image::Rgba<u8>) {
     let alpha = pixel[3] as i32 as f32/255.0;
-    pixel[0] = (alpha*(pixel[0] as i32 as f32) + (1.0 - alpha)*255.0) as u8;
-    pixel[1] = (alpha*(pixel[1] as i32 as f32) + (1.0 - alpha)*255.0) as u8;
-    pixel[2] = (alpha*(pixel[2] as i32 as f32) + (1.0 - alpha)*255.0) as u8;
+    pixel[0] = (alpha*(pixel[0] as i32 as f32) + (1.0 - alpha)*38.0) as u8;
+    pixel[1] = (alpha*(pixel[1] as i32 as f32) + (1.0 - alpha)*38.0) as u8;
+    pixel[2] = (alpha*(pixel[2] as i32 as f32) + (1.0 - alpha)*38.0) as u8;
 }
 
 static ANSI_COLOURS: [[i32; 3]; 256] = [
