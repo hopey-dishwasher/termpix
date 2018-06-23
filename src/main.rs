@@ -1,6 +1,7 @@
 extern crate docopt;
 extern crate image;
-extern crate rustc_serialize;
+#[macro_use]
+extern crate serde_derive;
 extern crate terminal_size;
 extern crate termpix;
 
@@ -31,7 +32,7 @@ const USAGE: &'static str = "
       --true-colour             Use 24-bit RGB color but you don't spell so good.
 ";
 
-#[derive(Debug, RustcDecodable)]
+#[derive(Debug, Deserialize)]
 struct Args {
     flag_width: Option<u32>,
     flag_height: Option<u32>,
@@ -45,7 +46,7 @@ struct Args {
 fn main() {
 
     let args: Args = Docopt::new(USAGE)
-                            .and_then(|d| d.decode())
+                            .and_then(|d| d.deserialize())
                             .unwrap_or_else(|e| e.exit());
 
     let img = image::open(&Path::new(&args.arg_file)).unwrap();
