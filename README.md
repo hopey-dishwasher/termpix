@@ -25,7 +25,7 @@ particularly poorly represented in the ANSI colour pallette.
 # Installing
 
 * Install Rust & Cargo: https://www.rust-lang.org/downloads.html
-* `cargo install --git https://github.com/Aeysol/termpix` (see `cargo install` options for e.g. install location customisation)
+* `cargo install --git https://github.com/hopey-dishwasher/termpix` (see `cargo install` options for e.g. install location customisation)
 
 # License
 Apache 2.0 license
