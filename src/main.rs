@@ -5,7 +5,7 @@ extern crate serde_derive;
 extern crate terminal_size;
 extern crate termpix;
 
-use std::io::Write;
+use std::io::{Write, stdout};
 
 use docopt::Docopt;
 use image::GenericImage;
@@ -54,7 +54,7 @@ fn main() {
     let true_colour = args.flag_true_colour || args.flag_true_color;
     let (width, height) = determine_size(args, orig_width, orig_height);
 
-    termpix::print_image(img, true_colour, width, height);
+    termpix::print_image(img, true_colour, width, height, &mut stdout());
 
 }
 
