@@ -1,7 +1,7 @@
 extern crate ansi_term;
 extern crate image;
 
-use std::io::{Write, self};
+use std::io::Write;
 
 use ansi_term::Colour::Fixed;
 use ansi_term::ANSIStrings;
@@ -48,7 +48,7 @@ pub fn print_image<W: Write>(img: image::DynamicImage, true_colour: bool, width:
             }
 
             write!(row, "\x1b[m\n").unwrap();
-            io::stdout().write(&row).unwrap();
+            w.write(&row).unwrap();
             row.clear();
         }
     }
