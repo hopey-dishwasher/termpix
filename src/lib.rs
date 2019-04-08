@@ -1,13 +1,13 @@
 extern crate ansi_term;
 extern crate image;
 
-use std::io::{Write, self};
+use std::io::Write;
 
 use ansi_term::Colour::Fixed;
 use ansi_term::ANSIStrings;
 use image::{imageops, FilterType, Pixel};
 
-pub fn print_image(img: image::DynamicImage, true_colour: bool, width: u32, height: u32) {
+pub fn print_image<W: Write>(img: image::DynamicImage, true_colour: bool, width: u32, height: u32, w: &mut W) {
     let img = imageops::resize(&img, width, height, FilterType::Nearest);
 
     if !true_colour {
@@ -27,7 +27,7 @@ pub fn print_image(img: image::DynamicImage, true_colour: bool, width: u32, heig
                 Fixed(bottom_colour).on(Fixed(top_colour)).paint("▄")
             }).collect();
 
-            print!("{}\n", ANSIStrings(&row));
+            write!(w, "{}\n", ANSIStrings(&row)).ok();
         }    
     } else {
         let mut row = Vec::new();
@@ -48,7 +48,7 @@ pub fn print_image(img: image::DynamicImage, true_colour: bool, width: u32, heig
             }
 
             write!(row, "\x1b[m\n").unwrap();
-            io::stdout().write(&row).unwrap();
+            w.write(&row).unwrap();
             row.clear();
         }
     }
