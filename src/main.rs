@@ -9,6 +9,7 @@ use std::io::Write;
 
 use docopt::Docopt;
 use image::GenericImage;
+use image::GenericImageView;
 use terminal_size::{Width, Height, terminal_size};
 
 use std::path::Path;
