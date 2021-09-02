@@ -5,7 +5,7 @@ use std::io::{Write, self};
 
 use ansi_term::Colour::Fixed;
 use ansi_term::ANSIStrings;
-use image::{imageops, FilterType, Pixel};
+use image::{imageops, imageops::FilterType, Pixel};
 
 pub fn print_image(img: image::DynamicImage, true_colour: bool, width: u32, height: u32) {
     let img = imageops::resize(&img, width, height, FilterType::Nearest);
